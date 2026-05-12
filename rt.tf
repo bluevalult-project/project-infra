@@ -7,18 +7,11 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# Fetch the main route table of the VPC
-data "aws_route_table" "main" {
+resource "aws_route_table" "route1" {
   vpc_id = aws_vpc.vpc1.id
-  filter {
-    name   = "association.main"
-    values = ["true"]
-  }
-}
 
-# Add a default route to the main route table
-resource "aws_route" "internet_access" {
-  route_table_id         = data.aws_route_table.main.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.igw.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
 }
