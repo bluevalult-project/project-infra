@@ -1,6 +1,6 @@
 resource "aws_security_group" "cp-sg" {
   name        = "cp-sg"
-  description = "Allow required k8's cp inbound traffic"
+  description = "Allow required kuber cp inbound traffic"
   vpc_id      = aws_vpc.vpc1.id   # attach to your VPC
 
   # Inbound rules
