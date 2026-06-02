@@ -63,9 +63,9 @@ locals {
 resource "aws_instance" "jenkins" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be RedHat-based (e.g., Amazon Linux, CentOS, RHEL) for the Jenkins playbook.
-  ami           = "ami-02dfbd4ff395f2a1b"
-  instance_type = "t2.medium"
-  key_name      = "awskey" # Ensure this key pair exists in your AWS account
+  ami           = "ami-00e801948462f718a"
+  instance_type = "c7i-flex.large"
+  key_name      = "universal" # Ensure this key pair exists in your AWS account
   subnet_id     = aws_subnet.subnet1.id # Place in sub1-project
   vpc_security_group_ids = [
     aws_security_group.jenkins-sg.id
@@ -83,9 +83,9 @@ resource "aws_instance" "jenkins" {
 resource "aws_instance" "cp-sg" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be Ubuntu-based for the Kubernetes playbook.
-  ami           = "ami-0a640e53a0ceadca5"
-  instance_type = "t2.medium"
-  key_name      = "awskey" # Ensure this key pair exists in your AWS account
+  ami           = "ami-00e801948462f718a"
+  instance_type = "c7i-flex.large"
+  key_name      = "universal" # Ensure this key pair exists in your AWS account
   subnet_id     = aws_subnet.subnet2.id # Place in sub2-project
   vpc_security_group_ids = [
     aws_security_group.cp-sg.id
@@ -103,9 +103,9 @@ resource "aws_instance" "cp-sg" {
 resource "aws_instance" "node1" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be Ubuntu-based for the Kubernetes playbook.
-  ami           = "ami-0a640e53a0ceadca5"
-  instance_type = "t2.medium"
-  key_name      = "awskey" # Ensure this key pair exists in your AWS account
+  ami           = "ami-00e801948462f718a"
+  instance_type = "c7i-flex.large"
+  key_name      = "universal" # Ensure this key pair exists in your AWS account
   subnet_id     = aws_subnet.subnet3.id # Place in sub3-project
   vpc_security_group_ids = [
     aws_security_group.node-sg.id

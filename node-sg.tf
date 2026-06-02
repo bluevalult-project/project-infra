@@ -1,6 +1,6 @@
 resource "aws_security_group" "node-sg" {
   name        = "node-sg"
-  description = "Allow k8's node required inbound traffic"
+  description = "Allow kuber node required inbound traffic"
   vpc_id      = aws_vpc.vpc1.id   # attach to your VPC
 
   # Inbound rules
