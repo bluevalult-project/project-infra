@@ -1,12 +1,74 @@
+
+# User data script for the Jenkins instance (RedHat-based AMI)
+locals {
+   jenkins_user_data = <<-EOF
+    #!/bin/bash
+    # This script runs on the EC2 instances at launch.
+
+    # 1. Create a new user 'ansible' with a home directory and bash shell.
+    # The password for 'ansible' user is set to 'admin@123'.
+    # This is for demonstration purposes; in production, use SSH keys for authentication.
+    sudo useradd ansible -m -s /bin/bash -p $(openssl passwd -1 admin@123)
+
+    # 2. Grant 'ansible' user passwordless sudo privileges.
+    # This allows the 'ansible' user to run commands with root privileges without being prompted for a password.
+    echo 'ansible ALL=(ALL:ALL) NOPASSWD:ALL' | sudo EDITOR='tee -a' visudo
+
+    # 3. Enable password authentication for SSH.
+    # This sed command robustly finds and sets 'PasswordAuthentication yes',
+    # handling commented lines or existing 'no' values.
+    sudo sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+(yes|no)/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+    # 4. Enable keyboard interactive authentication for SSH.
+    # This sed command robustly finds and sets 'KeyboardInteractiveAuthentication yes',
+    # handling commented lines or existing 'no' values.
+    # sudo sed -i -E 's/^[#[:space:]]*KbdInteractiveAuthentication[[:space:]]+(yes|no)/KbdInteractiveAuthentication yes/' /etc/ssh/sshd_config
+
+    # 5. Restart the SSH daemon to apply the changes.
+    # This ensures that the new SSH configuration (including password and keyboard interactive authentication) takes effect immediately.
+    sudo systemctl restart sshd
+  EOF
+
+  # User data script for Kubernetes Control Plane and Worker Nodes (Ubuntu-based AMIs)
+  ubuntu_user_data = <<-EOF
+    #!/bin/bash
+    # This script runs on the EC2 instances at launch.
+
+    # 1. Create a new user 'ansible' with a home directory and bash shell.
+    # The password for 'ansible' user is set to 'admin@123'.
+    # This is for demonstration purposes; in production, use SSH keys for authentication.
+    sudo useradd ansible -m -s /bin/bash -p $(openssl passwd -1 admin@123)
+
+    # 2. Grant 'ansible' user passwordless sudo privileges.
+    # This allows the 'ansible' user to run commands with root privileges without being prompted for a password.
+    echo 'ansible ALL=(ALL:ALL) NOPASSWD:ALL' | sudo EDITOR='tee -a' visudo
+
+    # 3. Enable password authentication for SSH.
+    # This sed command robustly finds and sets 'PasswordAuthentication yes',
+    # handling commented lines or existing 'no' values.
+    sudo sed -i -E 's/^[#[:space:]]*PasswordAuthentication[[:space:]]+(yes|no)/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+    # 4. Enable keyboard interactive authentication for SSH.
+    # This sed command robustly finds and sets 'KeyboardInteractiveAuthentication yes',
+    # handling commented lines or existing 'no' values.
+    sudo sed -i -E 's/^[#[:space:]]*KbdInteractiveAuthentication[[:space:]]+(yes|no)/KbdInteractiveAuthentication yes/' /etc/ssh/sshd_config
+
+    # 5. Restart the SSH daemon to apply the changes.
+    # This ensures that the new SSH configuration (including password and keyboard interactive authentication) takes effect immediately.
+    sudo systemctl restart ssh
+  EOF
+}
+
+
 resource "aws_instance" "jenkins" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be RedHat-based (e.g., Amazon Linux, CentOS, RHEL) for the Jenkins playbook.
   ami           = "ami-02dfbd4ff395f2a1b"
   instance_type = "t2.medium"
   key_name      = "awskey" # Ensure this key pair exists in your AWS account
-  subnet_id     = aws_subnet.sub1_project.id # Place in sub1-project
+  subnet_id     = aws_subnet.subnet1.id # Place in sub1-project
   vpc_security_group_ids = [
-    aws_security_group.jenkins_sg.id
+    aws_security_group.jenkins-sg.id
   ]
   root_block_device {
     volume_size = 14 # GiB
@@ -18,15 +80,15 @@ resource "aws_instance" "jenkins" {
   }
 }
 
-resource "aws_instance" "k8s_cp" {
+resource "aws_instance" "cp-sg" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be Ubuntu-based for the Kubernetes playbook.
   ami           = "ami-0a640e53a0ceadca5"
   instance_type = "t2.medium"
   key_name      = "awskey" # Ensure this key pair exists in your AWS account
-  subnet_id     = aws_subnet.sub2_project.id # Place in sub2-project
+  subnet_id     = aws_subnet.subnet2.id # Place in sub2-project
   vpc_security_group_ids = [
-    aws_security_group.k8s_cp_sg.id
+    aws_security_group.cp-sg.id
   ]
   root_block_device {
     volume_size = 20 # GiB
@@ -44,9 +106,9 @@ resource "aws_instance" "node1" {
   ami           = "ami-0a640e53a0ceadca5"
   instance_type = "t2.medium"
   key_name      = "awskey" # Ensure this key pair exists in your AWS account
-  subnet_id     = aws_subnet.sub3_project.id # Place in sub3-project
+  subnet_id     = aws_subnet.subnet3.id # Place in sub3-project
   vpc_security_group_ids = [
-    aws_security_group.k8s_nodes_sg.id
+    aws_security_group.node-sg.id
   ]
   root_block_device {
     volume_size = 20 # GiB
@@ -57,3 +119,6 @@ resource "aws_instance" "node1" {
     Name = "Node1"
   }
 }
+
+
+
