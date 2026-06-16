@@ -1,0 +1,178 @@
+---
+- name: Configure and Install Jenkins on Ubuntu
+  hosts: jenkins_servers
+  become: true
+  vars:
+    tmp_size: "2G"
+
+  pre_tasks:
+    - name: Install prerequisites
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - wget
+        state: present
+        update_cache: yes
+
+  tasks:
+    # -------------------------------------------------------
+    # /tmp as tmpfs
+    # -------------------------------------------------------
+    - name: Ensure /tmp is mounted as tmpfs
+      ansible.builtin.mount:
+        path: /tmp
+        src: tmpfs
+        fstype: tmpfs
+        opts: "defaults,noatime,size={{ tmp_size }}"
+        state: mounted
+
+    - name: Add /tmp tmpfs entry to /etc/fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "tmpfs /tmp tmpfs defaults,noatime,size={{ tmp_size }} 0 0"
+        state: present
+        regexp: '^tmpfs /tmp tmpfs'
+
+    # -------------------------------------------------------
+    # System update + Java 21
+    # -------------------------------------------------------
+    - name: Update all installed packages
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install OpenJDK 21
+      ansible.builtin.apt:
+        name: openjdk-21-jdk
+        state: present
+
+    # -------------------------------------------------------
+    # JENKINS REPO SETUP
+    # Using LATEST official method from jenkins.io docs (2026 key)
+    # Key path: /etc/apt/keyrings/jenkins-keyring.asc
+    # Key URL:  jenkins.io-2026.key  (latest as of 2026)
+    # No gpg --dearmor needed — apt supports .asc directly
+    # -------------------------------------------------------
+
+    - name: Create /etc/apt/keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Remove any old Jenkins key and repo files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/keyrings/jenkins-keyring.asc
+        - /usr/share/keyrings/jenkins-keyring.asc
+        - /etc/apt/keyrings/jenkins-keyring.gpg
+        - /etc/apt/sources.list.d/jenkins.list
+
+    - name: Download latest Jenkins GPG key (2026)
+      ansible.builtin.shell: |
+        wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+          https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+      changed_when: true
+
+    - name: Verify Jenkins key downloaded successfully
+      ansible.builtin.stat:
+        path: /etc/apt/keyrings/jenkins-keyring.asc
+      register: jenkins_key
+
+    - name: Fail if Jenkins key is missing or empty
+      ansible.builtin.fail:
+        msg: >
+          Jenkins GPG key download failed (size={{ jenkins_key.stat.size | default(0) }}).
+          Your server cannot reach pkg.jenkins.io — check firewall/security group
+          outbound rules for port 443.
+      when: not jenkins_key.stat.exists or jenkins_key.stat.size < 1000
+
+    - name: Write Jenkins apt repository file
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/jenkins.list
+        content: "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/\n"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update apt cache with Jenkins repo
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Jenkins
+      ansible.builtin.apt:
+        name: jenkins
+        state: present
+
+    - name: Enable and start Jenkins service
+      ansible.builtin.systemd:
+        name: jenkins
+        enabled: true
+        state: started
+
+    - name: Confirm Jenkins is running
+      ansible.builtin.systemd:
+        name: jenkins
+      register: jenkins_status
+
+    - name: Show Jenkins service status
+      ansible.builtin.debug:
+        msg: "Jenkins is {{ jenkins_status.status.ActiveState }}"
+
+    # -------------------------------------------------------
+    # Docker — using docker.io from Ubuntu repos
+    # -------------------------------------------------------
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Enable and start Docker service
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------
+    # Git
+    # -------------------------------------------------------
+    - name: Install Git
+      ansible.builtin.apt:
+        name: git
+        state: present
+
+    - name: Add Jenkins user to Docker group
+      ansible.builtin.user:
+        name: jenkins
+        groups: docker
+        append: true
+
+    # -------------------------------------------------------
+    # kubectl
+    # -------------------------------------------------------
+    - name: Fetch latest kubectl stable version
+      ansible.builtin.uri:
+        url: https://dl.k8s.io/release/stable.txt
+        return_content: yes
+      register: kubectl_stable_version
+
+    - name: Download kubectl to /usr/local/bin
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_stable_version.content | trim }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        force: false
+
+    - name: Verify kubectl installation
+      ansible.builtin.command: kubectl version --client
+      register: kubectl_version
+      changed_when: false
+
+    - name: Show kubectl version
+      ansible.builtin.debug:
+        msg: "{{ kubectl_version.stdout }}"
