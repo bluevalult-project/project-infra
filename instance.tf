@@ -63,7 +63,7 @@ locals {
 resource "aws_instance" "jenkins" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be RedHat-based (e.g., Amazon Linux, CentOS, RHEL) for the Jenkins playbook.
-  ami           = "ami-00e801948462f718a"
+  ami           = "ami-0b6d9d3d33ba97d99"
   instance_type = "c7i-flex.large"
   key_name      = "universal" # Ensure this key pair exists in your AWS account
   subnet_id     = aws_subnet.subnet1.id # Place in sub1-project
@@ -83,7 +83,7 @@ resource "aws_instance" "jenkins" {
 resource "aws_instance" "cp-sg" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be Ubuntu-based for the Kubernetes playbook.
-  ami           = "ami-00e801948462f718a"
+  ami           = "ami-0b6d9d3d33ba97d99"
   instance_type = "c7i-flex.large"
   key_name      = "universal" # Ensure this key pair exists in your AWS account
   subnet_id     = aws_subnet.subnet2.id # Place in sub2-project
@@ -103,7 +103,7 @@ resource "aws_instance" "cp-sg" {
 resource "aws_instance" "node1" {
   # IMPORTANT: Replace ami-xxxxxxxxxxxxxxxxx with a valid AMI ID for ap-south-1 (Mumbai)
   # This AMI should be Ubuntu-based for the Kubernetes playbook.
-  ami           = "ami-00e801948462f718a"
+  ami           = "ami-0b6d9d3d33ba97d99"
   instance_type = "c7i-flex.large"
   key_name      = "universal" # Ensure this key pair exists in your AWS account
   subnet_id     = aws_subnet.subnet3.id # Place in sub3-project
